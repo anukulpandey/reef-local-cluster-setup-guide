@@ -44,6 +44,55 @@ generate initial chain spec
 ./target/release/reef-node build-spec --chain testnet-new --disable-default-bootnode > /tmp/local-chain-spec.json
 ```
 
+insert keys
+
+```
+bash -c '
+    set -e;
+    V1_SEED=$(grep -o "\"secretSeed\": \"[^\"]*\"" /tmp/validator1.txt | cut -d"\"" -f4);
+    V1_ADDR=$(grep -o "\"ss58Address\": \"[^\"]*\"" /tmp/validator1.txt | cut -d"\"" -f4);
+    V2_SEED=$(grep -o "\"secretSeed\": \"[^\"]*\"" /tmp/validator2.txt | cut -d"\"" -f4);
+    V2_ADDR=$(grep -o "\"ss58Address\": \"[^\"]*\"" /tmp/validator2.txt | cut -d"\"" -f4);
+    V3_SEED=$(grep -o "\"secretSeed\": \"[^\"]*\"" /tmp/validator3.txt | cut -d"\"" -f4);
+    V3_ADDR=$(grep -o "\"ss58Address\": \"[^\"]*\"" /tmp/validator3.txt | cut -d"\"" -f4);
+
+    V1_BABE=$(./target/release/reef-node key inspect --scheme Sr25519 "$V1_SEED//babe" --output-type json 2>/dev/null | grep -o "\"ss58Address\": \"[^\"]*\"" | cut -d"\"" -f4);
+    V1_GRAN=$(./target/release/reef-node key inspect --scheme Ed25519 "$V1_SEED//grandpa" --output-type json 2>/dev/null | grep -o "\"ss58Address\": \"[^\"]*\"" | cut -d"\"" -f4);
+    V1_IMON=$(./target/release/reef-node key inspect --scheme Sr25519 "$V1_SEED//im_online" --output-type json 2>/dev/null | grep -o "\"ss58Address\": \"[^\"]*\"" | cut -d"\"" -f4);
+    V1_AUDI=$(./target/release/reef-node key inspect --scheme Sr25519 "$V1_SEED//authority_discovery" --output-type json 2>/dev/null | grep -o "\"ss58Address\": \"[^\"]*\"" | cut -d"\"" -f4);
+
+    V2_BABE=$(./target/release/reef-node key inspect --scheme Sr25519 "$V2_SEED//babe" --output-type json 2>/dev/null | grep -o "\"ss58Address\": \"[^\"]*\"" | cut -d"\"" -f4);
+    V2_GRAN=$(./target/release/reef-node key inspect --scheme Ed25519 "$V2_SEED//grandpa" --output-type json 2>/dev/null | grep -o "\"ss58Address\": \"[^\"]*\"" | cut -d"\"" -f4);
+    V2_IMON=$(./target/release/reef-node key inspect --scheme Sr25519 "$V2_SEED//im_online" --output-type json 2>/dev/null | grep -o "\"ss58Address\": \"[^\"]*\"" | cut -d"\"" -f4);
+    V2_AUDI=$(./target/release/reef-node key inspect --scheme Sr25519 "$V2_SEED//authority_discovery" --output-type json 2>/dev/null | grep -o "\"ss58Address\": \"[^\"]*\"" | cut -d"\"" -f4);
+
+    V3_BABE=$(./target/release/reef-node key inspect --scheme Sr25519 "$V3_SEED//babe" --output-type json 2>/dev/null | grep -o "\"ss58Address\": \"[^\"]*\"" | cut -d"\"" -f4);
+    V3_GRAN=$(./target/release/reef-node key inspect --scheme Ed25519 "$V3_SEED//grandpa" --output-type json 2>/dev/null | grep -o "\"ss58Address\": \"[^\"]*\"" | cut -d"\"" -f4);
+    V3_IMON=$(./target/release/reef-node key inspect --scheme Sr25519 "$V3_SEED//im_online" --output-type json 2>/dev/null | grep -o "\"ss58Address\": \"[^\"]*\"" | cut -d"\"" -f4);
+    V3_AUDI=$(./target/release/reef-node key inspect --scheme Sr25519 "$V3_SEED//authority_discovery" --output-type json 2>/dev/null | grep -o "\"ss58Address\": \"[^\"]*\"" | cut -d"\"" -f4);
+
+    jq "
+        .genesis.runtimeGenesis.patch.balances.balances +=
+          [[\"$V1_ADDR\", 100000000000000000000000000],
+           [\"$V2_ADDR\", 100000000000000000000000000],
+           [\"$V3_ADDR\", 100000000000000000000000000]]
+        |
+        .genesis.runtimeGenesis.patch.session.keys =
+          [[\"$V1_ADDR\", \"$V1_ADDR\", {\"authority_discovery\": \"$V1_AUDI\", \"babe\": \"$V1_BABE\", \"grandpa\": \"$V1_GRAN\", \"im_online\": \"$V1_IMON\"}],
+           [\"$V2_ADDR\", \"$V2_ADDR\", {\"authority_discovery\": \"$V2_AUDI\", \"babe\": \"$V2_BABE\", \"grandpa\": \"$V2_GRAN\", \"im_online\": \"$V2_IMON\"}],
+           [\"$V3_ADDR\", \"$V3_ADDR\", {\"authority_discovery\": \"$V3_AUDI\", \"babe\": \"$V3_BABE\", \"grandpa\": \"$V3_GRAN\", \"im_online\": \"$V3_IMON\"}]]
+        |
+        .genesis.runtimeGenesis.patch.staking.invulnerables =
+          [\"$V1_ADDR\", \"$V2_ADDR\", \"$V3_ADDR\"]
+        |
+        .genesis.runtimeGenesis.patch.staking.stakers =
+          [[\"$V1_ADDR\", \"$V1_ADDR\", 1000000000000000000000000, \"Validator\"],
+           [\"$V2_ADDR\", \"$V2_ADDR\", 1000000000000000000000000, \"Validator\"],
+           [\"$V3_ADDR\", \"$V3_ADDR\", 1000000000000000000000000, \"Validator\"]]
+    " /tmp/local-chain-spec.json > /tmp/local-chain-spec-updated.json
+'
+```
+
 convert to raw chain spec
 
 ```
